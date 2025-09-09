@@ -47,11 +47,28 @@ public class Http11Processor implements Runnable, Processor {
             if(resourcePath.contains("login")) {
                 Map<String, String> stringStringMap = parseQuery(resourcePath);
 
-                String account = stringStringMap.get("account");
-
+                String account = stringStringMap.getOrDefault("account","");
                 Optional<User> user = InMemoryUserRepository.findByAccount(account);
 
                 log.info("user: {}", user.get());
+
+                if(user.isPresent() && user.get().checkPassword(stringStringMap.get("password"))) {
+                    byte[] body = readFromResourcePath("/index.html");
+                    byte[] redirectHeader = createRedirectHeader(body);
+
+                    writer.write(redirectHeader);
+                    writer.write(body);
+                    writer.flush();
+                    return;
+                }
+
+                byte[] body = readFromResourcePath("/401.html");
+                byte[] redirectHeader = createRedirectHeader(body);
+
+                writer.write(redirectHeader);
+                writer.write(body);
+                writer.flush();
+                return;
             }
 
             byte[] body = readFromResourcePath(resourcePath);
@@ -89,6 +106,16 @@ public class Http11Processor implements Runnable, Processor {
         }
 
         return queryMap;
+    }
+
+    private byte[] createRedirectHeader(final byte[] redirectBody) {
+        String responseHeader =
+                "HTTP/1.1 302 Found\r\n" +
+                        "Content-Type: text/html; charset=utf-8\r\n" +
+                        "Content-Length: " + redirectBody.length + "\r\n" +
+                        "\r\n";
+
+        return responseHeader.getBytes(StandardCharsets.UTF_8);
     }
 
     private byte[] createNotFoundHeader(final byte[] notFoundBody) {
