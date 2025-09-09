@@ -44,7 +44,7 @@ public class Http11Processor implements Runnable, Processor {
 
             String resourcePath = http11Request.getUri().substring(1);
 
-            if(resourcePath.contains("login")) {
+            if(resourcePath.contains("login") && http11Request.getMethod().equals("POST")) {
                 Map<String, String> stringStringMap = parseQuery(resourcePath);
 
                 String account = stringStringMap.getOrDefault("account","");
