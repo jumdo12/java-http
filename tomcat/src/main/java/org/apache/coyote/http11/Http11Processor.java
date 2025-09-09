@@ -113,14 +113,14 @@ public class Http11Processor implements Runnable, Processor {
     }
 
     private String guessByFileExtension(String path) {
-        if (path.endsWith(".html") || path.endsWith(".htm") || path.equals("/") || path.contains("/login")) return "text/html";
+        if (path.endsWith(".html") || path.equals("/")) return "text/html";
         if (path.endsWith(".css")) return "text/css";
         if (path.endsWith(".js")) return "application/javascript";
         if (path.endsWith(".json")) return "application/json";
         if (path.endsWith(".png")) return "image/png";
         if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
 
-        return "application/json";
+        return "text/html";
     }
 
     private byte[] readFromResourcePath(final String resourcePath) throws IOException {
@@ -137,8 +137,7 @@ public class Http11Processor implements Runnable, Processor {
             stringBuilder.append(resourcePath, 0, resourcePath.indexOf("?"));
             stringBuilder.append(".html");
         }
-
-        if(!resourcePath.contains("?")) {
+        else {
             stringBuilder.append(resourcePath);
         }
 
