@@ -12,11 +12,13 @@ public class Http11Request {
     private String method;
     private String uri;
     private String protocol;
+    private String body = "";
     private Map<String, String> headers = new HashMap<String, String>();
 
     public Http11Request(final BufferedReader bufferedReader) throws IOException {
         readRequestLine(bufferedReader);
         readHeaders(bufferedReader);
+        readBody(bufferedReader);
     }
 
     private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
@@ -39,12 +41,44 @@ public class Http11Request {
         }
     }
 
+    private void readBody(final BufferedReader bufferedReader) throws IOException {
+        String lenHeader = headers.get("Content-Length");
+        if (lenHeader == null) {
+            body = "";
+            return;
+        }
+        int len;
+        try {
+            len = Integer.parseInt(lenHeader);
+        } catch (NumberFormatException e) {
+            body = "";
+            return;
+        }
+        if (len <= 0) {
+            body = "";
+            return;
+        }
+
+        char[] buf = new char[len];
+        int read = 0;
+        while (read < len) {
+            int r = bufferedReader.read(buf, read, len - read);
+            if (r == -1) break;
+            read += r;
+        }
+        body = new String(buf, 0, read);
+    }
+
     public String getMethod() {
         return method;
     }
 
     public String getUri() {
         return uri;
+    }
+
+    public String getBody(){
+        return body;
     }
 
     public String getProtocol() {

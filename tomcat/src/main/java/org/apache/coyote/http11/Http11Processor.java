@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -44,15 +45,16 @@ public class Http11Processor implements Runnable, Processor {
 
             String resourcePath = http11Request.getUri().substring(1);
 
-            if(resourcePath.contains("login") && http11Request.getMethod().equals("POST")) {
-                Map<String, String> stringStringMap = parseQuery(resourcePath);
+            if(resourcePath.startsWith("login") && http11Request.getMethod().equals("POST")) {
+                System.out.println(http11Request.getBody());
+                Map<String, String> parseQuery = parseQuery(http11Request.getBody());
 
-                String account = stringStringMap.getOrDefault("account","");
+                String account = parseQuery.get("account");
                 Optional<User> user = InMemoryUserRepository.findByAccount(account);
 
-                log.info("user: {}", user.get());
+                if(!user.isEmpty() && user.get().checkPassword(parseQuery.get("password"))) {
+                    log.info("user: {}", user.get());
 
-                if(user.isPresent() && user.get().checkPassword(stringStringMap.get("password"))) {
                     byte[] body = readFromResourcePath("/index.html");
                     byte[] redirectHeader = createRedirectHeader(body);
 
@@ -63,6 +65,25 @@ public class Http11Processor implements Runnable, Processor {
                 }
 
                 byte[] body = readFromResourcePath("/401.html");
+                byte[] redirectHeader = createRedirectHeader(body);
+
+                writer.write(redirectHeader);
+                writer.write(body);
+                writer.flush();
+                return;
+            }
+
+            if(resourcePath.startsWith("register") && http11Request.getMethod().equals("POST")) {
+                Map<String, String> parseQuery = parseQuery(http11Request.getBody());
+
+                String account = parseQuery.get("account");
+                String email = parseQuery.get("email");
+                String password = parseQuery.get("password");
+
+                User user = new User(account, password, email);
+                InMemoryUserRepository.save(user);
+
+                byte[] body = readFromResourcePath("/index.html");
                 byte[] redirectHeader = createRedirectHeader(body);
 
                 writer.write(redirectHeader);
@@ -84,6 +105,7 @@ public class Http11Processor implements Runnable, Processor {
             }
 
             byte[] responseHeader = createResponseHeader(http11Request, body);
+
             writer.write(responseHeader);
             writer.write(body);
             writer.flush();
@@ -92,17 +114,24 @@ public class Http11Processor implements Runnable, Processor {
         }
     }
 
+    private void writeHeaderAndBody(OutputStream writer, byte[] header, byte[] body) throws IOException {
+        writer.write(header);
+        writer.write(body);
+        writer.flush();
+    }
+
     private Map<String, String> parseQuery(final String uri) {
         HashMap<String, String> queryMap = new HashMap<>();
 
-        if(uri.contains("?")) {
-            String queryString = uri.substring(uri.indexOf('?') + 1);
+        String queryString = uri;
+        if(uri.startsWith("?")) {
+            queryString = uri.substring(uri.indexOf('?') + 1);
+        }
 
-            String[] split = queryString.split("&");
-            for (String query : split) {
-                String[] splitQuery = query.split("=");
-                queryMap.put(splitQuery[0], splitQuery[1]);
-            }
+        String[] split = queryString.split("&");
+        for (String query : split) {
+            String[] splitQuery = query.split("=");
+            queryMap.put(splitQuery[0], splitQuery[1]);
         }
 
         return queryMap;
@@ -162,6 +191,10 @@ public class Http11Processor implements Runnable, Processor {
 
         if(resourcePath.contains("?")) {
             stringBuilder.append(resourcePath, 0, resourcePath.indexOf("?"));
+            stringBuilder.append(".html");
+        }
+        else if(!resourcePath.contains(".")){
+            stringBuilder.append(resourcePath);
             stringBuilder.append(".html");
         }
         else {
