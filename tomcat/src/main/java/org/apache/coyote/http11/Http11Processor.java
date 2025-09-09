@@ -46,7 +46,6 @@ public class Http11Processor implements Runnable, Processor {
             String resourcePath = http11Request.getUri().substring(1);
 
             if(resourcePath.startsWith("login") && http11Request.getMethod().equals("POST")) {
-                System.out.println(http11Request.getBody());
                 Map<String, String> parseQuery = parseQuery(http11Request.getBody());
 
                 String account = parseQuery.get("account");
@@ -56,7 +55,7 @@ public class Http11Processor implements Runnable, Processor {
                     log.info("user: {}", user.get());
 
                     byte[] body = readFromResourcePath("/index.html");
-                    byte[] redirectHeader = createRedirectHeader(body);
+                    byte[] redirectHeader = createRedirectHeaderWithCookie(http11Request, body);
 
                     writer.write(redirectHeader);
                     writer.write(body);
@@ -143,6 +142,22 @@ public class Http11Processor implements Runnable, Processor {
                         "Content-Type: text/html; charset=utf-8\r\n" +
                         "Content-Length: " + redirectBody.length + "\r\n" +
                         "\r\n";
+
+        return responseHeader.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private byte[] createRedirectHeaderWithCookie(final Http11Request http11Request, final byte[] redirectBody) {
+        String responseHeader =
+                "HTTP/1.1 302 Found\r\n" +
+                        "Content-Type: text/html; charset=utf-8\r\n" +
+                        "Content-Length: " + redirectBody.length + "\r\n";
+
+        if(http11Request.getCookie("JSESSIONID").isEmpty() ){
+            String sid = java.util.UUID.randomUUID().toString();
+            responseHeader += "Set-Cookie: JSESSIONID=" + sid + ";" +"\r\n";
+        }
+
+        responseHeader += "\r\n";
 
         return responseHeader.getBytes(StandardCharsets.UTF_8);
     }

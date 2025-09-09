@@ -2,10 +2,9 @@ package org.apache.coyote.http11;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class Http11Request {
 
@@ -14,6 +13,7 @@ public class Http11Request {
     private String protocol;
     private String body = "";
     private Map<String, String> headers = new HashMap<String, String>();
+    private final Map<String, HttpCookie> cookies = new HashMap<>();
 
     public Http11Request(final BufferedReader bufferedReader) throws IOException {
         readRequestLine(bufferedReader);
@@ -36,6 +36,11 @@ public class Http11Request {
             String[] split = line.split(":");
             String header = split[0].trim();
             String value = split[1].trim();
+
+            if ("Cookie".equalsIgnoreCase(header)) {
+                cookies.putAll(HttpCookie.parse(value));
+                continue;
+            }
 
             headers.put(header, value);
         }
@@ -79,6 +84,12 @@ public class Http11Request {
 
     public String getBody(){
         return body;
+    }
+
+    public Optional<HttpCookie> getCookie(String name) {
+        HttpCookie httpCookie = cookies.get(name);
+
+        return Optional.ofNullable(httpCookie);
     }
 
     public String getProtocol() {
