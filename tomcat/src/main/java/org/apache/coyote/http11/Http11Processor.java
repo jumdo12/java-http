@@ -4,15 +4,13 @@ import com.techcourse.db.InMemoryUserRepository;
 import com.techcourse.exception.UncheckedServletException;
 import com.techcourse.model.User;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.catalina.session.Session;
 import org.apache.coyote.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,20 +40,44 @@ public class Http11Processor implements Runnable, Processor {
                 final var bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
                 final var writer = connection.getOutputStream()) {
             Http11Request http11Request = new Http11Request(bufferedReader);
-
             String resourcePath = http11Request.getUri().substring(1);
+
+            if (resourcePath.startsWith("login") && http11Request.getMethod().equals("GET")) {
+                Optional<Session> jsessionid = http11Request.getSession("JSESSIONID");
+
+                if(jsessionid.isPresent()) {
+                    Session session = jsessionid.get();
+                    log.info("JSESSIONID: {}", session.getId());
+
+                    User user = (User) session.getAttribute("user");
+                    log.info("user: {}", user);
+
+                    byte[] body = readFromResourcePath("/index.html");
+                    byte[] redirectHeader = createRedirectHeader(body);
+
+                    writer.write(redirectHeader);
+                    writer.write(body);
+                    writer.flush();
+                }
+            }
 
             if(resourcePath.startsWith("login") && http11Request.getMethod().equals("POST")) {
                 Map<String, String> parseQuery = parseQuery(http11Request.getBody());
 
                 String account = parseQuery.get("account");
-                Optional<User> user = InMemoryUserRepository.findByAccount(account);
+                Optional<User> optionalUser = InMemoryUserRepository.findByAccount(account);
 
-                if(!user.isEmpty() && user.get().checkPassword(parseQuery.get("password"))) {
-                    log.info("user: {}", user.get());
+                if(!optionalUser.isEmpty() && optionalUser.get().checkPassword(parseQuery.get("password"))) {
+                    User user = optionalUser.get();
+                    log.info("user: {}", user);
+
+                    Session session = http11Request.createSession();
+                    session.setAttribute("user", user);
+
+                    HttpCookie httpCookie = new HttpCookie("JSESSIONID", session.getId());
 
                     byte[] body = readFromResourcePath("/index.html");
-                    byte[] redirectHeader = createRedirectHeaderWithCookie(http11Request, body);
+                    byte[] redirectHeader = createRedirectHeaderWithCookie(body, httpCookie);
 
                     writer.write(redirectHeader);
                     writer.write(body);
@@ -113,12 +135,6 @@ public class Http11Processor implements Runnable, Processor {
         }
     }
 
-    private void writeHeaderAndBody(OutputStream writer, byte[] header, byte[] body) throws IOException {
-        writer.write(header);
-        writer.write(body);
-        writer.flush();
-    }
-
     private Map<String, String> parseQuery(final String uri) {
         HashMap<String, String> queryMap = new HashMap<>();
 
@@ -146,16 +162,15 @@ public class Http11Processor implements Runnable, Processor {
         return responseHeader.getBytes(StandardCharsets.UTF_8);
     }
 
-    private byte[] createRedirectHeaderWithCookie(final Http11Request http11Request, final byte[] redirectBody) {
+    private byte[] createRedirectHeaderWithCookie(final byte[] redirectBody, final HttpCookie httpCookie) {
         String responseHeader =
                 "HTTP/1.1 302 Found\r\n" +
                         "Content-Type: text/html; charset=utf-8\r\n" +
                         "Content-Length: " + redirectBody.length + "\r\n";
 
-        if(http11Request.getCookie("JSESSIONID").isEmpty() ){
-            String sid = java.util.UUID.randomUUID().toString();
-            responseHeader += "Set-Cookie: JSESSIONID=" + sid + ";" +"\r\n";
-        }
+        String name = httpCookie.getName();
+        String httpCookieValue = httpCookie.getValue();
+        responseHeader += "Set-Cookie: "+ name + "=" + httpCookieValue + ";" +"\r\n";
 
         responseHeader += "\r\n";
 

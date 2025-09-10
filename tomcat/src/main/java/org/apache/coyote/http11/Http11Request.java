@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import org.apache.catalina.session.Session;
+import org.apache.catalina.session.SessionManager;
 
 public class Http11Request {
 
@@ -19,6 +22,19 @@ public class Http11Request {
         readRequestLine(bufferedReader);
         readHeaders(bufferedReader);
         readBody(bufferedReader);
+    }
+
+    public Optional<Session> getSession(final String sessionId) {
+        return getCookie(sessionId)
+                .map(HttpCookie::getValue)
+                .map(SessionManager.getInstance()::findSession);
+    }
+
+    public Session createSession() {
+        String sessionId = UUID.randomUUID().toString();
+        Session session = new Session(sessionId);
+        SessionManager.getInstance().add(session);
+        return session;
     }
 
     private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
