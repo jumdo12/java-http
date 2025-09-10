@@ -58,6 +58,7 @@ public class Http11Processor implements Runnable, Processor {
                     writer.write(redirectHeader);
                     writer.write(body);
                     writer.flush();
+                    return;
                 }
             }
 
