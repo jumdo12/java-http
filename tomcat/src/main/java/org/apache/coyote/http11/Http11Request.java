@@ -107,7 +107,6 @@ public class Http11Request {
 
         return Optional.ofNullable(httpCookie);
     }
-
     public String getProtocol() {
         return protocol;
     }
