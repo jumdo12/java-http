@@ -5,9 +5,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import org.apache.catalina.session.Session;
-import org.apache.catalina.session.SessionManager;
 
 public class Http11Request {
 
@@ -17,7 +14,7 @@ public class Http11Request {
     private String protocol;
     private String body = "";
     private Map<String, String> headers = new HashMap<>();
-    private final Map<String, HttpCookie> cookies = new HashMap<>();
+    private final Map<String, Http11Cookie> cookies = new HashMap<>();
 
     public Http11Request(final BufferedReader bufferedReader) throws IOException {
         readRequestLine(bufferedReader);
@@ -27,18 +24,7 @@ public class Http11Request {
 
     public Optional<String> getSession(final String sessionId) {
         return getCookie(sessionId)
-                .map(HttpCookie::getValue);
-    }
-
-    private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
-        String requestLine = bufferedReader.readLine();
-        String[] splitRequestLine = requestLine.split(" ");
-
-        method = splitRequestLine[0];
-        targetResource = splitRequestLine[1];
-        protocol = splitRequestLine[2];
-
-        path = parsePath(targetResource);
+                .map(Http11Cookie::getValue);
     }
 
     private String parsePath(final String targetResource) {
@@ -47,22 +33,6 @@ public class Http11Request {
         }
 
         return targetResource.substring(1);
-    }
-
-    private void readHeaders(final BufferedReader bufferedReader) throws IOException {
-        String line;
-        while((line = bufferedReader.readLine()) != null && !line.isEmpty()) {
-            String[] split = line.split(":");
-            String header = split[0].trim();
-            String value = split[1].trim();
-
-            if ("Cookie".equalsIgnoreCase(header)) {
-                cookies.putAll(HttpCookie.parse(value));
-                continue;
-            }
-
-            headers.put(header, value);
-        }
     }
 
     private void readBody(final BufferedReader bufferedReader) throws IOException {
@@ -93,6 +63,59 @@ public class Http11Request {
         body = new String(buf, 0, read);
     }
 
+    public Map<String, String> parseBody() {
+        HashMap<String, String> bodyMap = new HashMap<>();
+
+        String[] infos = body.split("&");
+        for (String info : infos) {
+            String[] parsedInfo = info.split("=");
+            bodyMap.put(parsedInfo[0], parsedInfo[1]);
+        }
+
+        return bodyMap;
+    }
+
+    public Optional<Http11Cookie> getCookie(String name) {
+        Http11Cookie http11Cookie = cookies.get(name);
+
+        return Optional.ofNullable(http11Cookie);
+    }
+
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public String getHeader(final String headerName) {
+        return headers.get(headerName);
+    }
+
+    private void readHeaders(final BufferedReader bufferedReader) throws IOException {
+        String line;
+        while((line = bufferedReader.readLine()) != null && !line.isEmpty()) {
+            String[] split = line.split(":");
+            String header = split[0].trim();
+            String value = split[1].trim();
+
+            if ("Cookie".equalsIgnoreCase(header)) {
+                cookies.putAll(Http11Cookie.parse(value));
+                continue;
+            }
+
+            headers.put(header, value);
+        }
+    }
+
+    private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
+        String requestLine = bufferedReader.readLine();
+        String[] splitRequestLine = requestLine.split(" ");
+
+        method = splitRequestLine[0];
+        targetResource = splitRequestLine[1];
+        protocol = splitRequestLine[2];
+
+        path = parsePath(targetResource);
+    }
+
     public String getMethod() {
         return method;
     }
@@ -107,35 +130,5 @@ public class Http11Request {
 
     public String getBody(){
         return body;
-    }
-
-    public Map<String, String> getQuerys() {
-        HashMap<String, String> queryMap = new HashMap<>();
-
-        String queryString = targetResource;
-        if(targetResource.startsWith("?")) {
-            queryString = targetResource.substring(targetResource.indexOf('?') + 1);
-        }
-
-        String[] split = queryString.split("&");
-        for (String query : split) {
-            String[] splitQuery = query.split("=");
-            queryMap.put(splitQuery[0], splitQuery[1]);
-        }
-
-        return queryMap;
-    }
-
-    public Optional<HttpCookie> getCookie(String name) {
-        HttpCookie httpCookie = cookies.get(name);
-
-        return Optional.ofNullable(httpCookie);
-    }
-    public String getProtocol() {
-        return protocol;
-    }
-
-    public String getHeader(final String headerName) {
-        return headers.get(headerName);
     }
 }
