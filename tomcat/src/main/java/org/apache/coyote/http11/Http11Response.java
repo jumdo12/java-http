@@ -3,34 +3,78 @@ package org.apache.coyote.http11;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Http11Response {
 
+    private String path;
     private byte[] body;
     private Http11Status http11Status;
     private String contentType;
-    private String responseHeader;
     private final List<Http11Cookie> cookies;
 
-    public Http11Response(final byte[] body,
+    public Http11Response(final String path,
                            final String contentType,
                            final Http11Status http11Status,
                            final List<Http11Cookie> cookies) {
-        this.body = body;
+        this.path = path;
         this.contentType = contentType;
         this.http11Status = http11Status;
         this.cookies = cookies;
-        this.responseHeader = getHeader();
+        this.body = new byte[0];
     }
 
-    public Http11Response(final byte[] body,
+    public Http11Response(final String path,
                           final String contentType,
                           final Http11Status http11Status) {
-        this.body = body;
+        this.path = path;
         this.contentType = contentType;
         this.http11Status = http11Status;
         this.cookies = new ArrayList<>();
-        this.responseHeader = getHeader();
+        this.body = new byte[0];
+    }
+
+    public Http11Response(final String contentType,
+                          final Http11Status http11Status,
+                          final byte[] body) {
+        this.contentType = contentType;
+        this.http11Status = http11Status;
+        this.cookies = new ArrayList<>();
+        this.body = body;
+    }
+
+    public Http11Response(final String contentType,
+                          final Http11Status http11Status,
+                          final byte[] body,
+                          final List<Http11Cookie> cookies) {
+        this.contentType = contentType;
+        this.http11Status = http11Status;
+        this.cookies = cookies;
+        this.body = body;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public byte[] getResponseHeader() {
+        return getHeader().getBytes(StandardCharsets.UTF_8);
+    }
+
+    public byte[] getBody() {
+        return body;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public Http11Status getHttp11Status() {
+        return http11Status;
+    }
+
+    public List<Http11Cookie> getCookies() {
+        return cookies;
     }
 
     private String getHeader() {
@@ -48,14 +92,8 @@ public class Http11Response {
         );
         responseBuilder.append("\r\n");
 
+        System.out.println("header : " + responseBuilder.toString());
+
         return responseBuilder.toString();
-    }
-
-    public byte[] getBody() {
-        return body;
-    }
-
-    public byte[] getResponseHeader() {
-        return responseHeader.getBytes(StandardCharsets.UTF_8);
     }
 }

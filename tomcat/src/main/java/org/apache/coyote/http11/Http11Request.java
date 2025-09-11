@@ -32,7 +32,7 @@ public class Http11Request {
             return targetResource.substring(1, targetResource.indexOf("?"));
         }
 
-        return targetResource.substring(1);
+        return targetResource;
     }
 
     private void readBody(final BufferedReader bufferedReader) throws IOException {
@@ -107,11 +107,13 @@ public class Http11Request {
 
     private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
         String requestLine = bufferedReader.readLine();
+        System.out.println("requestLine = " + requestLine);
+
         String[] splitRequestLine = requestLine.split(" ");
 
         method = splitRequestLine[0];
         targetResource = splitRequestLine[1];
-        protocol = splitRequestLine[2];
+        protocol = "HTTP/1.1";
 
         path = parsePath(targetResource);
     }
