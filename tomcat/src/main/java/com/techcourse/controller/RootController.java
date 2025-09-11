@@ -10,12 +10,10 @@ public class RootController extends AbstractController {
 
     @Override
     protected Http11Response doGet(Http11Request http11Request) throws IOException {
-        System.out.println("asd" + http11Request.getPath());
+        String response = "Hello world!";
 
-        String path = "";
-        String contentType = guessContentTypeByFileExtension(path);
-        byte[] body = readFromResourcePath(path);
+        byte[] body = response.getBytes();
 
-        return new Http11Response(body,contentType, Http11Status.OK);
+        return new Http11Response(body,"text/html", Http11Status.OK);
     }
 }

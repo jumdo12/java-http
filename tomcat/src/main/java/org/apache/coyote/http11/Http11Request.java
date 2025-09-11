@@ -107,7 +107,6 @@ public class Http11Request {
 
     private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
         String requestLine = bufferedReader.readLine();
-        System.out.println("requestLine = " + requestLine);
 
         String[] splitRequestLine = requestLine.split(" ");
 

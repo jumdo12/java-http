@@ -9,15 +9,14 @@ import org.apache.coyote.http11.Http11Request;
 public class ControllerMapper {
 
     private static final Map<String, Controller> pathMappings = Map.of(
-            "/", RootController.getInstance(),
-            "/login", LoginController.getInstance(),
-            "/register", RegisterController.getInstance()
+            "/", new RootController(),
+            "/login", new LoginController(),
+            "/register", new RegisterController()
     );
     private static final ControllerMapper INSTANCE = new ControllerMapper();
 
     public Controller getController(final String path) {
-        System.out.println("controller path: " + path);
-        return pathMappings.getOrDefault(path, AbstractController.getInstance());
+        return pathMappings.getOrDefault(path, new AbstractController());
     }
 
     public static ControllerMapper getInstance() {

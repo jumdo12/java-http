@@ -9,12 +9,6 @@ import org.apache.coyote.http11.Http11Status;
 
 public class AbstractController implements Controller {
 
-    private static final AbstractController INSTANCE = new AbstractController();
-
-    protected AbstractController() {
-
-    }
-
     @Override
     public Http11Response service(final Http11Request http11Request) throws IOException {
         if(http11Request.getMethod().equals("GET")) {
@@ -52,12 +46,6 @@ public class AbstractController implements Controller {
     }
 
     protected byte[] readFromResourcePath(final String resourcePath) throws IOException {
-        if(resourcePath.isEmpty()) {
-            String response = "Hello world!";
-
-            return response.getBytes();
-        }
-
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("static/");
 
@@ -84,9 +72,5 @@ public class AbstractController implements Controller {
         byte[] body = readFromResourcePath(failResourceName);
 
         return new Http11Response(body, "text/html", Http11Status.NOT_FOUND);
-    }
-
-    public static AbstractController getInstance() {
-        return INSTANCE;
     }
 }

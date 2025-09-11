@@ -45,6 +45,8 @@ public class Http11Processor implements Runnable, Processor {
             Http11Request http11Request = new Http11Request(bufferedReader);
             String path = http11Request.getPath();
 
+            System.out.println(http11Request.getMethod() + " " + path);
+
             Http11Response http11Response = ControllerMapper.getInstance()
                     .getController(path)
                     .service(http11Request);
