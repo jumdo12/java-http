@@ -10,7 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.apache.catalina.session.Session;
+import org.apache.catalina.session.SessionManager;
 import org.apache.coyote.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,30 +42,34 @@ public class Http11Processor implements Runnable, Processor {
                 final var bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
                 final var writer = connection.getOutputStream()) {
             Http11Request http11Request = new Http11Request(bufferedReader);
-            String resourcePath = http11Request.getUri().substring(1);
 
-            if (resourcePath.startsWith("login") && http11Request.getMethod().equals("GET")) {
-                Optional<Session> jsessionid = http11Request.getSession("JSESSIONID");
 
-                if(jsessionid.isPresent()) {
-                    Session session = jsessionid.get();
-                    log.info("JSESSIONID: {}", session.getId());
+            if (http11Request.getPath().startsWith("login") && http11Request.getMethod().equals("GET")) {
+                Optional<String> optionalSessionId = http11Request.getSession("JSESSIONID");
 
-                    User user = (User) session.getAttribute("user");
-                    log.info("user: {}", user);
+                if(optionalSessionId.isPresent()) {
+                    String sessionId = optionalSessionId.get();
 
-                    byte[] body = readFromResourcePath("/index.html");
-                    byte[] redirectHeader = createRedirectHeader(body);
+                    if(SessionManager.getInstance().findSession(sessionId) != null) {
+                        Session session = SessionManager.getInstance().findSession(sessionId);
+                        log.info("JSESSIONID: {}", sessionId);
 
-                    writer.write(redirectHeader);
-                    writer.write(body);
-                    writer.flush();
-                    return;
+                        User user = (User) session.getAttribute("user");
+                        log.info("user: {}", user);
+
+                        byte[] body = readFromResourcePath("/index.html");
+                        byte[] redirectHeader = createRedirectHeader(body);
+
+                        writer.write(redirectHeader);
+                        writer.write(body);
+                        writer.flush();
+                        return;
+                    }
                 }
             }
 
-            if(resourcePath.startsWith("login") && http11Request.getMethod().equals("POST")) {
-                Map<String, String> parseQuery = parseQuery(http11Request.getBody());
+            if(http11Request.getPath().startsWith("login") && http11Request.getMethod().equals("POST")) {
+                Map<String, String> parseQuery = http11Request.getQuerys();
 
                 String account = parseQuery.get("account");
                 Optional<User> optionalUser = InMemoryUserRepository.findByAccount(account);
@@ -72,7 +78,7 @@ public class Http11Processor implements Runnable, Processor {
                     User user = optionalUser.get();
                     log.info("user: {}", user);
 
-                    Session session = http11Request.createSession();
+                    Session session = SessionManager.getInstance().createSession();
                     session.setAttribute("user", user);
 
                     HttpCookie httpCookie = new HttpCookie("JSESSIONID", session.getId());
@@ -95,8 +101,8 @@ public class Http11Processor implements Runnable, Processor {
                 return;
             }
 
-            if(resourcePath.startsWith("register") && http11Request.getMethod().equals("POST")) {
-                Map<String, String> parseQuery = parseQuery(http11Request.getBody());
+            if(http11Request.getPath().startsWith("register") && http11Request.getMethod().equals("POST")) {
+                Map<String, String> parseQuery = http11Request.getQuerys();
 
                 String account = parseQuery.get("account");
                 String email = parseQuery.get("email");
@@ -114,7 +120,7 @@ public class Http11Processor implements Runnable, Processor {
                 return;
             }
 
-            byte[] body = readFromResourcePath(resourcePath);
+            byte[] body = readFromResourcePath(http11Request.getPath());
 
             if(body == null) {
                 String notFoundBody = "<h1>404 Not Found</h1>";
@@ -134,23 +140,6 @@ public class Http11Processor implements Runnable, Processor {
         } catch (IOException | UncheckedServletException e) {
             log.error(e.getMessage(), e);
         }
-    }
-
-    private Map<String, String> parseQuery(final String uri) {
-        HashMap<String, String> queryMap = new HashMap<>();
-
-        String queryString = uri;
-        if(uri.startsWith("?")) {
-            queryString = uri.substring(uri.indexOf('?') + 1);
-        }
-
-        String[] split = queryString.split("&");
-        for (String query : split) {
-            String[] splitQuery = query.split("=");
-            queryMap.put(splitQuery[0], splitQuery[1]);
-        }
-
-        return queryMap;
     }
 
     private byte[] createRedirectHeader(final byte[] redirectBody) {
@@ -189,7 +178,7 @@ public class Http11Processor implements Runnable, Processor {
     }
 
     private byte[] createResponseHeader(final Http11Request http11Request, final byte[] body) {
-        String contentType = guessByFileExtension(http11Request.getUri());
+        String contentType = guessByFileExtension(http11Request.getPath());
 
         String header = "HTTP/1.1 200 OK" + " \r\n" +
         "Content-Type: " + contentType + ";charset=utf-8" + " \r\n" +

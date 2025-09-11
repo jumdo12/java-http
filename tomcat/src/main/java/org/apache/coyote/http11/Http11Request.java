@@ -12,10 +12,11 @@ import org.apache.catalina.session.SessionManager;
 public class Http11Request {
 
     private String method;
-    private String uri;
+    private String path;
+    private String targetResource;
     private String protocol;
     private String body = "";
-    private Map<String, String> headers = new HashMap<String, String>();
+    private Map<String, String> headers = new HashMap<>();
     private final Map<String, HttpCookie> cookies = new HashMap<>();
 
     public Http11Request(final BufferedReader bufferedReader) throws IOException {
@@ -24,17 +25,9 @@ public class Http11Request {
         readBody(bufferedReader);
     }
 
-    public Optional<Session> getSession(final String sessionId) {
+    public Optional<String> getSession(final String sessionId) {
         return getCookie(sessionId)
-                .map(HttpCookie::getValue)
-                .map(SessionManager.getInstance()::findSession);
-    }
-
-    public Session createSession() {
-        String sessionId = UUID.randomUUID().toString();
-        Session session = new Session(sessionId);
-        SessionManager.getInstance().add(session);
-        return session;
+                .map(HttpCookie::getValue);
     }
 
     private void readRequestLine(final BufferedReader bufferedReader) throws IOException {
@@ -42,8 +35,18 @@ public class Http11Request {
         String[] splitRequestLine = requestLine.split(" ");
 
         method = splitRequestLine[0];
-        uri = splitRequestLine[1];
+        targetResource = splitRequestLine[1];
         protocol = splitRequestLine[2];
+
+        path = parsePath(targetResource);
+    }
+
+    private String parsePath(final String targetResource) {
+        if(targetResource.contains("?")) {
+            return targetResource.substring(1, targetResource.indexOf("?"));
+        }
+
+        return targetResource.substring(1);
     }
 
     private void readHeaders(final BufferedReader bufferedReader) throws IOException {
@@ -94,12 +97,33 @@ public class Http11Request {
         return method;
     }
 
-    public String getUri() {
-        return uri;
+    public String getPath() {
+        return path;
+    }
+
+    public String getTargetResource() {
+        return targetResource;
     }
 
     public String getBody(){
         return body;
+    }
+
+    public Map<String, String> getQuerys() {
+        HashMap<String, String> queryMap = new HashMap<>();
+
+        String queryString = targetResource;
+        if(targetResource.startsWith("?")) {
+            queryString = targetResource.substring(targetResource.indexOf('?') + 1);
+        }
+
+        String[] split = queryString.split("&");
+        for (String query : split) {
+            String[] splitQuery = query.split("=");
+            queryMap.put(splitQuery[0], splitQuery[1]);
+        }
+
+        return queryMap;
     }
 
     public Optional<HttpCookie> getCookie(String name) {
