@@ -18,34 +18,26 @@ public class AbstractController implements Controller {
     @Override
     public Http11Response service(final Http11Request http11Request) throws IOException {
         if(http11Request.getMethod().equals("GET")) {
-            Http11Response http11Response = doGet(http11Request);
-
-            return createWithBody(http11Response);
+            return doGet(http11Request);
         }
         if(http11Request.getMethod().equals("POST")) {
-            Http11Response http11Response = doPost(http11Request);
-
-            return createWithBody(http11Response);
+            return doPost(http11Request);
         }
 
-        Http11Response redirect401Response = createRedirect401Response();
-
-        return createWithBody(redirect401Response);
+        return createRedirect401Response();
     }
 
     protected Http11Response doPost(Http11Request http11Request) throws IOException {
-        Http11Response redirect401Response = createRedirect401Response();
-
-        return createWithBody(redirect401Response);
+        return createRedirect401Response();
     }
 
     protected Http11Response doGet(Http11Request http11Request) throws IOException {
         String path = http11Request.getPath();
         String contentType = guessContentTypeByFileExtension(path);
 
-        Http11Response http11Response = new Http11Response(path, contentType, Http11Status.OK);
+        byte[] body = readFromResourcePath(path);
 
-        return createWithBody(http11Response);
+        return new Http11Response(body, contentType, Http11Status.OK);
     }
 
     protected String guessContentTypeByFileExtension(String path) {
@@ -59,15 +51,15 @@ public class AbstractController implements Controller {
         return "text/html";
     }
 
-    private byte[] readFromResourcePath(final String resourcePath) throws IOException {
-        if(resourcePath.equals("/")) {
+    protected byte[] readFromResourcePath(final String resourcePath) throws IOException {
+        if(resourcePath.isEmpty()) {
             String response = "Hello world!";
 
             return response.getBytes();
         }
 
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("static");
+        stringBuilder.append("static/");
 
         stringBuilder.append(resourcePath);
         if(!resourcePath.contains(".")){
@@ -86,22 +78,12 @@ public class AbstractController implements Controller {
         }
     }
 
-    private Http11Response createWithBody(final Http11Response http11Response) throws IOException {
-        System.out.println("response path : " + http11Response.getPath());
-        byte[] body = readFromResourcePath(http11Response.getPath());
-
-        return new Http11Response(
-                http11Response.getContentType(),
-                http11Response.getHttp11Status(),
-                body,
-                http11Response.getCookies()
-        );
-    }
-
-    private Http11Response createRedirect401Response() {
+    private Http11Response createRedirect401Response() throws IOException {
         String failResourceName = "401.html";
+        String contentType = guessContentTypeByFileExtension(failResourceName);
+        byte[] body = readFromResourcePath(failResourceName);
 
-        return new Http11Response(failResourceName, "text/html", Http11Status.NOT_FOUND);
+        return new Http11Response(body, "text/html", Http11Status.NOT_FOUND);
     }
 
     public static AbstractController getInstance() {

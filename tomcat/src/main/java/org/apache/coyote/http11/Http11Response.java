@@ -7,54 +7,32 @@ import java.util.Map;
 
 public class Http11Response {
 
-    private String path;
     private byte[] body;
     private Http11Status http11Status;
     private String contentType;
     private final List<Http11Cookie> cookies;
 
-    public Http11Response(final String path,
-                           final String contentType,
-                           final Http11Status http11Status,
-                           final List<Http11Cookie> cookies) {
-        this.path = path;
-        this.contentType = contentType;
-        this.http11Status = http11Status;
-        this.cookies = cookies;
-        this.body = new byte[0];
-    }
-
-    public Http11Response(final String path,
-                          final String contentType,
-                          final Http11Status http11Status) {
-        this.path = path;
-        this.contentType = contentType;
-        this.http11Status = http11Status;
-        this.cookies = new ArrayList<>();
-        this.body = new byte[0];
-    }
-
-    public Http11Response(final String contentType,
-                          final Http11Status http11Status,
-                          final byte[] body) {
+    public Http11Response(
+            final byte[] body,
+            final String contentType,
+            final Http11Status http11Status
+    ) {
         this.contentType = contentType;
         this.http11Status = http11Status;
         this.cookies = new ArrayList<>();
         this.body = body;
     }
 
-    public Http11Response(final String contentType,
-                          final Http11Status http11Status,
-                          final byte[] body,
-                          final List<Http11Cookie> cookies) {
+    public Http11Response(
+            final byte[] body,
+            final String contentType,
+            final Http11Status http11Status,
+            final List<Http11Cookie> cookies
+    ) {
         this.contentType = contentType;
         this.http11Status = http11Status;
         this.cookies = cookies;
         this.body = body;
-    }
-
-    public String getPath() {
-        return path;
     }
 
     public byte[] getResponseHeader() {
@@ -91,8 +69,6 @@ public class Http11Response {
                         .append("\r\n")
         );
         responseBuilder.append("\r\n");
-
-        System.out.println("header : " + responseBuilder.toString());
 
         return responseBuilder.toString();
     }

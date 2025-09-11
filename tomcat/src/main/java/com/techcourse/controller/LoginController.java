@@ -2,6 +2,7 @@ package com.techcourse.controller;
 
 import com.techcourse.db.InMemoryUserRepository;
 import com.techcourse.model.User;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,13 +22,13 @@ public class LoginController extends AbstractController {
     private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
     @Override
-    protected Http11Response doPost(Http11Request http11Request){
+    protected Http11Response doPost(Http11Request http11Request) throws IOException {
         Map<String, String> parseQuery = http11Request.parseBody();
 
         String account = parseQuery.get("account");
         Optional<User> optionalUser = InMemoryUserRepository.findByAccount(account);
 
-        if(optionalUser.isPresent() && optionalUser.get().checkPassword(parseQuery.get("password"))) {
+        if(!optionalUser.isEmpty() && optionalUser.get().checkPassword(parseQuery.get("password"))) {
             User user = optionalUser.get();
             log.info("user: {}", user);
 
@@ -38,20 +39,22 @@ public class LoginController extends AbstractController {
             List<Http11Cookie> cookies = new ArrayList<>();
             cookies.add(http11Cookie);
 
-            String body = "index.html";
-            String contentType = guessContentTypeByFileExtension(body);
+            String path = "index.html";
+            String contentType = guessContentTypeByFileExtension(path);
+            byte[] body = readFromResourcePath(path);
 
             return new Http11Response(body, contentType, Http11Status.FOUND, cookies);
         }
 
-        String body = "401.html";
-        String contentType = guessContentTypeByFileExtension(body);
+        String path = "401.html";
+        String contentType = guessContentTypeByFileExtension(path);
+        byte[] body = readFromResourcePath(path);
 
         return new Http11Response(body, contentType, Http11Status.FOUND);
     }
 
     @Override
-    protected Http11Response doGet(Http11Request http11Request) {
+    protected Http11Response doGet(Http11Request http11Request) throws IOException {
         Optional<String> optionalSessionId = http11Request.getSession("JSESSIONID");
 
         if(optionalSessionId.isPresent()) {
@@ -64,15 +67,17 @@ public class LoginController extends AbstractController {
                 User user = (User) session.getAttribute("user");
                 log.info("user: {}", user);
 
-                String body = "index.html";
-                String contentType = guessContentTypeByFileExtension(body);
+                String path = "index.html";
+                String contentType = guessContentTypeByFileExtension(path);
+                byte[] body = readFromResourcePath(path);
 
                 return new Http11Response(body,contentType, Http11Status.FOUND);
             }
         }
 
-        String body = "login.html";
-        String contentType = guessContentTypeByFileExtension(body);
+        String path = "login.html";
+        String contentType = guessContentTypeByFileExtension(path);
+        byte[] body = readFromResourcePath(path);
 
         return new Http11Response(body,contentType, Http11Status.FOUND);
     }
