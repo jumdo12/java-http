@@ -1,10 +1,10 @@
 package org.apache.coyote.http11;
 
-import static java.lang.Thread.sleep;
-
 import com.techcourse.exception.UncheckedServletException;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,9 +12,6 @@ import org.apache.catalina.controller.ControllerMapper;
 import org.apache.coyote.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.Socket;
 
 public class Http11Processor implements Runnable, Processor {
 
@@ -35,7 +32,8 @@ public class Http11Processor implements Runnable, Processor {
     @Override
     public void process(final Socket connection) {
         try (
-                final var bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+                final var bufferedReader = new BufferedReader(
+                        new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
                 final var writer = connection.getOutputStream()) {
             Http11Request http11Request = parseRequest(bufferedReader);
             String path = http11Request.getPath();
@@ -103,7 +101,9 @@ public class Http11Processor implements Runnable, Processor {
         int read = 0;
         while (read < len) {
             int r = bufferedReader.read(buf, read, len - read);
-            if (r == -1) break;
+            if (r == -1) {
+                break;
+            }
             read += r;
         }
         return new String(buf, 0, read);
