@@ -1,5 +1,7 @@
 package org.apache.coyote.http11;
 
+import static java.lang.Thread.sleep;
+
 import com.techcourse.exception.UncheckedServletException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -42,11 +44,15 @@ public class Http11Processor implements Runnable, Processor {
                     .getController(path)
                     .service(http11Request);
 
+            sleep(10000);
+
             writer.write(http11Response.getResponseHeader());
             writer.write(http11Response.getBody());
             writer.flush();
         } catch (IOException | UncheckedServletException e) {
             log.error(e.getMessage(), e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
