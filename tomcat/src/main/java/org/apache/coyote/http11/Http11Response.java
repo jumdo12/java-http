@@ -65,7 +65,7 @@ public class Http11Response {
 
         cookies.forEach(cookie ->
                 responseBuilder.append("Set-Cookie: ")
-                        .append(cookie.getName() + " = " + cookie.getValue() + ";")
+                        .append(cookie.getName() + "=" + cookie.getValue() + ";")
                         .append("\r\n")
         );
         responseBuilder.append("\r\n");
