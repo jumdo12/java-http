@@ -43,16 +43,11 @@ public class Http11Processor implements Runnable, Processor {
             Http11Response http11Response = ControllerMapper.getInstance()
                     .getController(path)
                     .service(http11Request);
-
-            sleep(10000);
-
             writer.write(http11Response.getResponseHeader());
             writer.write(http11Response.getBody());
             writer.flush();
         } catch (IOException | UncheckedServletException e) {
             log.error(e.getMessage(), e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
     }
 
